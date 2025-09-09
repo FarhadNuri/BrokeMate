@@ -6,13 +6,14 @@ import {
   StatusBar,
   TouchableOpacity,
   ScrollView,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { widthPercentageToDP as wp, heightPercentageToDP as hp } from 'react-native-responsive-screen';
 import { Ionicons } from '@expo/vector-icons';
 
 export default function NotificationsScreen({ navigation }) {
-  const [notifications] = useState([
+  const [notifications, setNotifications] = useState([
     {
       id: '1',
       type: 'payment_reminder',
@@ -59,17 +60,60 @@ export default function NotificationsScreen({ navigation }) {
     return notifications.filter(notification => notification.section === section);
   };
 
+  const clearNotification = (notificationId) => {
+    setNotifications(prev => prev.filter(notification => notification.id !== notificationId));
+  };
+
+  const clearAllNotifications = () => {
+    Alert.alert(
+      'Clear All Notifications',
+      'Are you sure you want to clear all notifications? This action cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { 
+          text: 'Clear All', 
+          style: 'destructive',
+          onPress: () => setNotifications([])
+        }
+      ]
+    );
+  };
+
+  const clearSectionNotifications = (section) => {
+    const sectionName = section === 'today' ? 'Today' : 'Yesterday';
+    Alert.alert(
+      `Clear ${sectionName} Notifications`,
+      `Are you sure you want to clear all ${sectionName.toLowerCase()} notifications?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { 
+          text: 'Clear', 
+          style: 'destructive',
+          onPress: () => setNotifications(prev => prev.filter(notification => notification.section !== section))
+        }
+      ]
+    );
+  };
+
   const renderNotificationItem = (notification) => (
-    <TouchableOpacity key={notification.id} style={styles.notificationItem}>
-      <View style={styles.notificationIcon}>
-        <Ionicons name={notification.icon} size={wp('5%')} color="#6b7280" />
-      </View>
-      <View style={styles.notificationContent}>
-        <Text style={styles.notificationTitle}>{notification.title}</Text>
-        <Text style={styles.notificationTime}>{notification.time}</Text>
-      </View>
-      <Ionicons name="chevron-forward" size={wp('4%')} color="#9ca3af" />
-    </TouchableOpacity>
+    <View key={notification.id} style={styles.notificationItem}>
+      <TouchableOpacity style={styles.notificationMain}>
+        <View style={styles.notificationIcon}>
+          <Ionicons name={notification.icon} size={wp('5%')} color="#6b7280" />
+        </View>
+        <View style={styles.notificationContent}>
+          <Text style={styles.notificationTitle}>{notification.title}</Text>
+          <Text style={styles.notificationTime}>{notification.time}</Text>
+        </View>
+        <Ionicons name="chevron-forward" size={wp('4%')} color="#9ca3af" />
+      </TouchableOpacity>
+      <TouchableOpacity 
+        style={styles.clearButton}
+        onPress={() => clearNotification(notification.id)}
+      >
+        <Ionicons name="close" size={wp('4.5%')} color="#ef4444" />
+      </TouchableOpacity>
+    </View>
   );
 
   return (
@@ -84,21 +128,58 @@ export default function NotificationsScreen({ navigation }) {
           <Ionicons name="arrow-back" size={wp('6%')} color="#1f2937" />
         </TouchableOpacity>
         <Text style={styles.title}>Notifications</Text>
-        <View style={styles.placeholder} />
+        {notifications.length > 0 && (
+          <TouchableOpacity 
+            style={styles.clearAllButton}
+            onPress={clearAllNotifications}
+          >
+            <Text style={styles.clearAllText}>Clear All</Text>
+          </TouchableOpacity>
+        )}
       </View>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        {/* Today Section */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Today</Text>
-          {getNotificationsBySection('today').map(renderNotificationItem)}
-        </View>
+        {notifications.length === 0 ? (
+          <View style={styles.emptyContainer}>
+            <Ionicons name="notifications-off-outline" size={wp('20%')} color="#9ca3af" />
+            <Text style={styles.emptyTitle}>No notifications</Text>
+            <Text style={styles.emptySubtitle}>You're all caught up!</Text>
+          </View>
+        ) : (
+          <>
+            {/* Today Section */}
+            {getNotificationsBySection('today').length > 0 && (
+              <View style={styles.section}>
+                <View style={styles.sectionHeader}>
+                  <Text style={styles.sectionTitle}>Today</Text>
+                  <TouchableOpacity 
+                    style={styles.clearSectionButton}
+                    onPress={() => clearSectionNotifications('today')}
+                  >
+                    <Text style={styles.clearSectionText}>Clear</Text>
+                  </TouchableOpacity>
+                </View>
+                {getNotificationsBySection('today').map(renderNotificationItem)}
+              </View>
+            )}
 
-        {/* Yesterday Section */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Yesterday</Text>
-          {getNotificationsBySection('yesterday').map(renderNotificationItem)}
-        </View>
+            {/* Yesterday Section */}
+            {getNotificationsBySection('yesterday').length > 0 && (
+              <View style={styles.section}>
+                <View style={styles.sectionHeader}>
+                  <Text style={styles.sectionTitle}>Yesterday</Text>
+                  <TouchableOpacity 
+                    style={styles.clearSectionButton}
+                    onPress={() => clearSectionNotifications('yesterday')}
+                  >
+                    <Text style={styles.clearSectionText}>Clear</Text>
+                  </TouchableOpacity>
+                </View>
+                {getNotificationsBySection('yesterday').map(renderNotificationItem)}
+              </View>
+            )}
+          </>
+        )}
       </ScrollView>
     </SafeAreaView>
   );
@@ -132,8 +213,14 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#1f2937',
   },
-  placeholder: {
-    width: wp('10%'),
+  clearAllButton: {
+    paddingHorizontal: wp('3%'),
+    paddingVertical: hp('1%'),
+  },
+  clearAllText: {
+    fontSize: wp('4%'),
+    fontWeight: '600',
+    color: '#ef4444',
   },
   content: {
     flex: 1,
@@ -142,18 +229,30 @@ const styles = StyleSheet.create({
   section: {
     marginTop: hp('3%'),
   },
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: hp('2%'),
+  },
   sectionTitle: {
     fontSize: wp('5%'),
     fontWeight: '600',
     color: '#1f2937',
-    marginBottom: hp('2%'),
+  },
+  clearSectionButton: {
+    paddingHorizontal: wp('2%'),
+    paddingVertical: hp('0.5%'),
+  },
+  clearSectionText: {
+    fontSize: wp('3.8%'),
+    fontWeight: '500',
+    color: '#ef4444',
   },
   notificationItem: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#ffffff',
-    paddingHorizontal: wp('4%'),
-    paddingVertical: hp('2%'),
     borderRadius: wp('3%'),
     marginBottom: hp('1.5%'),
     shadowColor: '#000',
@@ -161,6 +260,19 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.05,
     shadowRadius: 2,
     elevation: 1,
+  },
+  notificationMain: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: wp('4%'),
+    paddingVertical: hp('2%'),
+  },
+  clearButton: {
+    paddingHorizontal: wp('3%'),
+    paddingVertical: hp('2%'),
+    borderLeftWidth: 1,
+    borderLeftColor: '#f3f4f6',
   },
   notificationIcon: {
     width: wp('10%'),
@@ -183,5 +295,25 @@ const styles = StyleSheet.create({
   notificationTime: {
     fontSize: wp('3.8%'),
     color: '#6b7280',
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingTop: hp('20%'),
+    paddingHorizontal: wp('10%'),
+  },
+  emptyTitle: {
+    fontSize: wp('6%'),
+    fontWeight: '600',
+    color: '#1f2937',
+    marginTop: hp('3%'),
+    marginBottom: hp('1%'),
+  },
+  emptySubtitle: {
+    fontSize: wp('4%'),
+    color: '#6b7280',
+    textAlign: 'center',
+    lineHeight: wp('6%'),
   },
 });

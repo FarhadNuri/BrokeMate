@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { widthPercentageToDP as wp, heightPercentageToDP as hp } from 'react-native-responsive-screen';
 import { listenToUserExpenses } from '../services/expenseService';
+import { getGroupDetails } from '../services/groupService';
 import { Ionicons } from '@expo/vector-icons';
 
 
@@ -61,6 +62,32 @@ export default function ExpenseScreen({ user, navigation }) {
     return categoryMap[categoryId] || 'ellipsis-horizontal-outline';
   };
 
+  const handleExpensePress = async (expense) => {
+    if (expense.groupId) {
+      // For group expenses, fetch group data to pass along
+      try {
+        const result = await getGroupDetails(expense.groupId);
+        
+        if (result.success) {
+          navigation?.navigate('ExpenseDetails', { 
+            expense, 
+            group: result.data 
+          });
+        } else {
+          // Fallback - navigate without group data
+          navigation?.navigate('ExpenseDetails', { expense });
+        }
+      } catch (error) {
+        console.error('Error fetching group details:', error);
+        // Fallback - navigate without group data
+        navigation?.navigate('ExpenseDetails', { expense });
+      }
+    } else {
+      // Personal expense - no group data needed
+      navigation?.navigate('ExpenseDetails', { expense });
+    }
+  };
+
   const renderExpenseItem = ({ item }) => {
     const isGroupExpense = !!item.groupId;
     const userSplit = item.splitDetails?.[user?.uid];
@@ -69,7 +96,7 @@ export default function ExpenseScreen({ user, navigation }) {
     return (
       <TouchableOpacity
         style={styles.expenseItem}
-        onPress={() => navigation?.navigate('ExpenseDetails', { expense: item })}
+        onPress={() => handleExpensePress(item)}
       >
         <View style={styles.expenseHeader}>
           <View style={styles.expenseLeft}>
