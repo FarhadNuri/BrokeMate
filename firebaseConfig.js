@@ -5,7 +5,7 @@ import { getFirestore } from "firebase/firestore";
 import { getAnalytics } from "firebase/analytics";
 import ReactNativeAsyncStorage from '@react-native-async-storage/async-storage';
 
-// Your web app's Firebase configuration
+//Firebase configuration
 const firebaseConfig = {
   apiKey: "AIzaSyCd105qRUoyNFTpJ4aSDS6CeF8-DweltZY",
   authDomain: "projectbrokemate.firebaseapp.com",
